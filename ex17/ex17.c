@@ -16,19 +16,19 @@ struct Address {
 
 struct Database {
 	struct Address rows[MAX_ROWS];
-}
+};
 
 struct Connection {
 	FILE *file;
 	struct Database *db;
-}
+};
 
 void die(const char *message) 
 {
 	if (errno) {
 		perror(message);
 	} else {
-		printf("ERROR: %2\n", message);
+		printf("ERROR: %s\n", message);
 	}
 
 	exit(1);
@@ -80,7 +80,7 @@ void Database_close(struct Connection *conn)
 void Database_write(struct Connection *conn)
 {
 	rewind(conn->file);
-	
+
 	int rc = fwrite(conn->db, sizeof(struct Database), 1, conn->file);
 	if(rc != 1) die("Failed to write database.");
 
@@ -105,7 +105,7 @@ void Database_set(struct Connection *conn, int id, const char *name, const char 
 	struct Address *addr = &conn->db->rows[id];
 	if(addr->set) die("Already set, delete it first");
 
-	add->set = 1;
+	addr->set = 1;
 	// WARNING: bug, read the "How To Break It" and fix this
 	char *res = strncpy(addr->name, name, MAX_DATA);
 	if(!res) die("Name copy failed");
@@ -138,13 +138,54 @@ void Database_list(struct Connection *conn)
 
 	for(i = 0; i < MAX_ROWS; i++) {
 		struct Address *cur = &db->rows[i];
-		
+
 		if(cur->set) {
 			Address_print(cur);
 		}
 	}
 }
 
+int main(int argc, char *argv[])
+{
+	if(argc < 3) die("Use: ex17 <dbfile> <action> [action params]");
 
+	char *filename = argv[1];
+	char action = argv[2][0];
+	struct Connection *conn = Database_open(filename, action);
+	int id = 0;
+
+	if(argc > 3) id = atoi(argv[3]);
+	if(id >= MAX_ROWS) die("There's not that many records.");
+
+	switch(action) {
+		case 'c':
+			Database_create(conn);
+			Database_write(conn);
+			break;
+		case 'g':
+			if(argc != 4) die("Need and id to get");
+			Database_get(conn, id);
+			break;
+		case 's':
+			if(argc != 6) die("Need id, name, email to set.");
+
+			Database_set(conn, id, argv[4], argv[5]);
+			Database_write(conn);
+			break;
+		case 'd':
+			if(argc != 4) die("Need id to delete");
+			Database_delete(conn, id);
+			Database_write(conn);
+			break;
+		case 'l':
+			Database_list(conn);
+			break;
+		default:
+			die("Invalid action, only: c=create, g=get, d=del, l=list");
+	}
+	Database_close(conn);
+
+	return 0;
+}
 
 
