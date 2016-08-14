@@ -53,12 +53,12 @@ void *Object_new(size_t size, Object proto, char *description)
     // copy the description over
     el->description = strdup(description);
 
-    if(!el->init(el)) {
-        // looks like it didn't initialize properly 
-        return NULL;
-    } else {
+    if(el->init(el)) {
         // all done, we made an object of any type
         return el;
+    } else {
+        // looks like it didn't initialize properly 
+        return NULL;
     }
 }
 
